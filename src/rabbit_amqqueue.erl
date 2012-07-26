@@ -195,7 +195,7 @@ find_durable_queues() ->
 recover_durable_queues(DurableQueues) ->
     Qs = [start_queue_process(node(), Q) || Q <- DurableQueues],
     [QName || Q = #amqqueue{name = QName, pid = Pid} <- Qs,
-              gen_server2:call(Pid, {init, true}, infinity) == {new, Q}].
+              gen_server_rabbit:call(Pid, {init, true}, infinity) == {new, Q}].
 
 declare(QueueName, Durable, AutoDelete, Args, Owner) ->
     ok = check_declare_arguments(QueueName, Args),
@@ -208,7 +208,7 @@ declare(QueueName, Durable, AutoDelete, Args, Owner) ->
                                             pid             = none,
                                             slave_pids      = [],
                                             mirror_nodes    = MNodes}),
-    case gen_server2:call(Q#amqqueue.pid, {init, false}, infinity) of
+    case gen_server_rabbit:call(Q#amqqueue.pid, {init, false}, infinity) of
         not_found -> rabbit_misc:not_found(QueueName);
         Q1        -> Q1
     end.
@@ -469,7 +469,7 @@ stat(#amqqueue{pid = QPid}) ->
     delegate_call(QPid, stat).
 
 delete_immediately(QPids) ->
-    [gen_server2:cast(QPid, delete_immediately) || QPid <- QPids],
+    [gen_server_rabbit:cast(QPid, delete_immediately) || QPid <- QPids],
     ok.
 
 delete(#amqqueue{ pid = QPid }, IfUnused, IfEmpty) ->
@@ -492,12 +492,12 @@ reject(QPid, MsgIds, Requeue, ChPid) ->
 
 notify_down_all(QPids, ChPid) ->
     safe_delegate_call_ok(
-      fun (QPid) -> gen_server2:call(QPid, {notify_down, ChPid}, infinity) end,
+      fun (QPid) -> gen_server_rabbit:call(QPid, {notify_down, ChPid}, infinity) end,
       QPids).
 
 limit_all(QPids, ChPid, Limiter) ->
     delegate:invoke_no_result(
-      QPids, fun (QPid) -> gen_server2:cast(QPid, {limit, ChPid, Limiter}) end).
+      QPids, fun (QPid) -> gen_server_rabbit:cast(QPid, {limit, ChPid, Limiter}) end).
 
 basic_get(#amqqueue{pid = QPid}, ChPid, NoAck) ->
     delegate_call(QPid, {basic_get, ChPid, NoAck}).
@@ -513,7 +513,7 @@ basic_cancel(#amqqueue{pid = QPid}, ChPid, ConsumerTag, OkMsg) ->
 notify_sent(QPid, ChPid) ->
     Key = {consumer_credit_to, QPid},
     put(Key, case get(Key) of
-                 1         -> gen_server2:cast(
+                 1         -> gen_server_rabbit:cast(
                                 QPid, {notify_sent, ChPid,
                                        ?MORE_CONSUMER_CREDIT_AFTER}),
                               ?MORE_CONSUMER_CREDIT_AFTER;
@@ -532,7 +532,7 @@ unblock(QPid, ChPid) ->
 
 flush_all(QPids, ChPid) ->
     delegate:invoke_no_result(
-      QPids, fun (QPid) -> gen_server2:cast(QPid, {flush, ChPid}) end).
+      QPids, fun (QPid) -> gen_server_rabbit:cast(QPid, {flush, ChPid}) end).
 
 internal_delete1(QueueName) ->
     ok = mnesia:delete({rabbit_queue, QueueName}),
@@ -558,13 +558,13 @@ internal_delete(QueueName, QPid) ->
       end).
 
 run_backing_queue(QPid, Mod, Fun) ->
-    gen_server2:cast(QPid, {run_backing_queue, Mod, Fun}).
+    gen_server_rabbit:cast(QPid, {run_backing_queue, Mod, Fun}).
 
 set_ram_duration_target(QPid, Duration) ->
-    gen_server2:cast(QPid, {set_ram_duration_target, Duration}).
+    gen_server_rabbit:cast(QPid, {set_ram_duration_target, Duration}).
 
 set_maximum_since_use(QPid, Age) ->
-    gen_server2:cast(QPid, {set_maximum_since_use, Age}).
+    gen_server_rabbit:cast(QPid, {set_maximum_since_use, Age}).
 
 on_node_down(Node) ->
     rabbit_misc:execute_mnesia_tx_with_tail(
@@ -621,7 +621,7 @@ deliver(Qs, Delivery = #delivery{mandatory = false, immediate = false}, Flow) ->
     end,
     delegate:invoke_no_result(
       QPids, fun (QPid) ->
-                     gen_server2:cast(QPid, {deliver, Delivery, Flow})
+                     gen_server_rabbit:cast(QPid, {deliver, Delivery, Flow})
              end),
     {routed, QPids};
 
@@ -631,7 +631,7 @@ deliver(Qs, Delivery = #delivery{mandatory = Mandatory, immediate = Immediate},
     {Success, _} =
         delegate:invoke(
           QPids, fun (QPid) ->
-                         gen_server2:call(QPid, {deliver, Delivery}, infinity)
+                         gen_server_rabbit:call(QPid, {deliver, Delivery}, infinity)
                  end),
     case {Mandatory, Immediate,
           lists:foldl(fun ({QPid, true}, {_, H}) -> {true, [QPid | H]};
@@ -656,7 +656,7 @@ safe_delegate_call_ok(F, Pids) ->
     end.
 
 delegate_call(Pid, Msg) ->
-    delegate:invoke(Pid, fun (P) -> gen_server2:call(P, Msg, infinity) end).
+    delegate:invoke(Pid, fun (P) -> gen_server_rabbit:call(P, Msg, infinity) end).
 
 delegate_cast(Pid, Msg) ->
-    delegate:invoke_no_result(Pid, fun (P) -> gen_server2:cast(P, Msg) end).
+    delegate:invoke_no_result(Pid, fun (P) -> gen_server_rabbit:cast(P, Msg) end).

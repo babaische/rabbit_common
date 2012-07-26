@@ -382,7 +382,7 @@ report_coverage_percentage(File, Cov, NotCov, Mod) ->
                Mod]).
 
 confirm_to_sender(Pid, MsgSeqNos) ->
-    gen_server2:cast(Pid, {confirm, MsgSeqNos, self()}).
+    gen_server_rabbit:cast(Pid, {confirm, MsgSeqNos, self()}).
 
 throw_on_error(E, Thunk) ->
     case Thunk() of
@@ -877,7 +877,7 @@ append_rpc_all_nodes(Nodes, M, F, A) ->
                   end || Res <- ResL]).
 
 %% A simplified version of gen_server:multi_call/2 with a sane
-%% API. This is not in gen_server2 as there is no useful
+%% API. This is not in gen_server_rabbit as there is no useful
 %% infrastructure there to share.
 multi_call(Pids, Req) ->
     MonitorPids = [start_multi_call(Pid, Req) || Pid <- Pids],
