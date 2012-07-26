@@ -199,7 +199,7 @@
 -spec(pget/2 :: (term(), [term()]) -> term()).
 -spec(pget/3 :: (term(), [term()], term()) -> term()).
 -spec(pget_or_die/2 :: (term(), [term()]) -> term() | no_return()).
--spec(format_message_queue/2 :: (any(), priority_queue:q()) -> term()).
+-spec(format_message_queue/2 :: (any(), priority_queue_rabbit:q()) -> term()).
 -spec(append_rpc_all_nodes/4 :: ([node()], atom(), atom(), [any()]) -> [any()]).
 -spec(multi_call/2 ::
         ([pid()], any()) -> {[{pid(), any()}], [{pid(), any()}]}).
@@ -849,17 +849,17 @@ pget_or_die(K, P) ->
     end.
 
 format_message_queue(_Opt, MQ) ->
-    Len = priority_queue:len(MQ),
+    Len = priority_queue_rabbit:len(MQ),
     {Len,
      case Len > 100 of
-         false -> priority_queue:to_list(MQ);
+         false -> priority_queue_rabbit:to_list(MQ);
          true  -> {summary,
                    orddict:to_list(
                      lists:foldl(
                        fun ({P, V}, Counts) ->
                                orddict:update_counter(
                                  {P, format_message_queue_entry(V)}, 1, Counts)
-                       end, orddict:new(), priority_queue:to_list(MQ)))}
+                       end, orddict:new(), priority_queue_rabbit:to_list(MQ)))}
      end}.
 
 format_message_queue_entry(V) when is_atom(V) ->

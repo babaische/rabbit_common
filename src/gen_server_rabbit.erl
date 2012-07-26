@@ -70,7 +70,7 @@
 %%
 %% 8) The callback module can optionally implement
 %% format_message_queue/2 which is the equivalent of format_status/2
-%% but where the second argument is specifically the priority_queue
+%% but where the second argument is specifically the priority_queue_rabbit
 %% which contains the prioritised message_queue.
 
 %% All modifications are (C) 2009-2012 VMware, Inc.
@@ -414,7 +414,7 @@ enter_loop(Mod, Options, State, ServerName, Timeout, Backoff) ->
     Name = get_proc_name(ServerName),
     Parent = get_parent(),
     Debug = debug_options(Name, Options),
-    Queue = priority_queue:new(),
+    Queue = priority_queue_rabbit:new(),
     Backoff1 = extend_backoff(Backoff),
     loop(find_prioritisers(
            #gs2_state { parent = Parent, name = Name, state = State,
@@ -437,7 +437,7 @@ init_it(Starter, self, Name, Mod, Args, Options) ->
 init_it(Starter, Parent, Name0, Mod, Args, Options) ->
     Name = name(Name0),
     Debug = debug_options(Name, Options),
-    Queue = priority_queue:new(),
+    Queue = priority_queue_rabbit:new(),
     GS2State = find_prioritisers(
                  #gs2_state { parent  = Parent,
                               name    = Name,
@@ -527,7 +527,7 @@ drain(GS2State) ->
 process_next_msg(GS2State = #gs2_state { time          = Time,
                                          timeout_state = TimeoutState,
                                          queue         = Queue }) ->
-    case priority_queue:out(Queue) of
+    case priority_queue_rabbit:out(Queue) of
         {{value, Msg}, Queue1} ->
             process_msg(Msg, GS2State #gs2_state { queue = Queue1 });
         {empty, Queue1} ->
@@ -651,7 +651,7 @@ in(Input, GS2State = #gs2_state { prioritise_info = PI }) ->
     in(Input, PI(Input, GS2State), GS2State).
 
 in(Input, Priority, GS2State = #gs2_state { queue = Queue }) ->
-    GS2State # gs2_state { queue = priority_queue:in(Input, Priority, Queue) }.
+    GS2State # gs2_state { queue = priority_queue_rabbit:in(Input, Priority, Queue) }.
 
 process_msg({system, From, Req},
             GS2State = #gs2_state { parent = Parent, debug  = Debug }) ->
@@ -1216,7 +1216,7 @@ format_status(Opt, StatusData) ->
     Specfic = callback(Mod, format_status, [Opt, [PDict, State]],
                        fun () -> [{data, [{"State", State}]}] end),
     Messages = callback(Mod, format_message_queue, [Opt, Queue],
-                        fun () -> priority_queue:to_list(Queue) end),
+                        fun () -> priority_queue_rabbit:to_list(Queue) end),
     [{header, Header},
      {data, [{"Status", SysState},
              {"Parent", Parent},
